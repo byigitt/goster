@@ -1,6 +1,6 @@
 # göster
 
-a simple screen recording sharing web app
+a simple screen recording sharing web app, göster means "show" in turkish.
 
 ## preview
 
@@ -92,9 +92,6 @@ TELEGRAM_CHANNEL_ID=@your_channel_or_id_here
    ```bash
    # using psql
    psql -U postgres -c "CREATE DATABASE goster;"
-   
-   # or run the SQL file
-   psql -U postgres < scripts/create-database.sql
    ```
 3. generate prisma client and push schema:
    ```bash
