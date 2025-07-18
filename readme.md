@@ -2,6 +2,10 @@
 
 a simple screen recording sharing web app
 
+## preview
+
+![göster demo](https://github.com/byigitt/goster/blob/main/public/goster-demo.mp4)
+
 ## features
 
 - create one-time-use links for screen recording
