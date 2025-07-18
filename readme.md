@@ -53,14 +53,22 @@ open [http://localhost:3000](http://localhost:3000) to use the app
 
 ## environment variables
 
-create a `.env.local` file:
+create a `.env` file (copy from `.env.example`):
 
 ```
+# Base URL for the application
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Database connection string
 DATABASE_URL="postgresql://postgres:password@localhost:5432/goster?schema=public"
 
-# Telegram Bot Configuration (for video storage)
+# Telegram Bot Configuration
+# Create a bot using @BotFather on Telegram to get the token
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+
+# Telegram Channel ID where videos will be stored
+# Can be a public channel username (e.g., @yourchannel) or private channel ID (e.g., -1001234567890)
+# Make sure your bot is an admin in this channel with permission to post messages
 TELEGRAM_CHANNEL_ID=@your_channel_or_id_here
 ```
 
@@ -104,6 +112,64 @@ TELEGRAM_CHANNEL_ID=@your_channel_or_id_here
    # or use the setup script
    pnpm db:setup
    ```
+
+## docker setup
+
+### quick start with docker compose
+
+1. create a `.env` file with your configuration:
+   ```bash
+   cp .env.example .env
+   # edit .env with your database url and telegram credentials
+   ```
+
+2. build and run with docker compose:
+   ```bash
+   # build and start the application
+   docker-compose up --build
+
+   # run in background
+   docker-compose up -d --build
+
+   # view logs
+   docker-compose logs -f
+
+   # stop the application
+   docker-compose down
+   ```
+
+3. the app will be available at http://localhost:3000
+
+note: this setup uses your existing database from the DATABASE_URL in your .env file
+
+### building docker image manually
+
+```bash
+# build the image
+docker build -t goster .
+
+# run with environment variables
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/goster" \
+  -e TELEGRAM_BOT_TOKEN="your_bot_token" \
+  -e TELEGRAM_CHANNEL_ID="your_channel_id" \
+  -e NEXT_PUBLIC_BASE_URL="http://localhost:3000" \
+  goster
+```
+
+### docker environment variables
+
+all environment variables from `.env` are supported:
+
+- `NEXT_PUBLIC_BASE_URL`: public url of your application
+- `DATABASE_URL`: postgresql connection string
+- `TELEGRAM_BOT_TOKEN`: telegram bot token from @BotFather
+- `TELEGRAM_CHANNEL_ID`: telegram channel for video storage
+
+### docker volumes
+
+- `postgres_data`: postgresql database files
+- `uploads`: temporary video upload directory
 
 ## notes
 
