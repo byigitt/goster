@@ -19,7 +19,9 @@ model Link {
   createdAt           DateTime  @default(now()) @map("created_at")
   expiresAt           DateTime? @map("expires_at")
   isRecordingComplete Boolean   @default(false) @map("is_recording_complete")
-  videoData           Bytes?    @map("video_data")
+  videoData           Bytes?    @map("video_data") // Keep for backward compatibility
+  telegramFileId      String?   @map("telegram_file_id")
+  telegramMessageId   Int?      @map("telegram_message_id")
   viewCount           Int       @default(0) @map("view_count")
 
   @@map("links")
