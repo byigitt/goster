@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Video, VideoOff, Send, RotateCcw, Loader2 } from 'lucide-react';
+import { Video, VideoOff, Send, RotateCcw, Loader2, AlertCircle } from 'lucide-react';
 import { SimpleMediaPlayer } from '@/components/ui/simple-media-player';
+import { toast } from 'sonner';
 
 export default function RecordingPage() {
   const { shortCode } = useParams();
@@ -15,11 +16,16 @@ export default function RecordingPage() {
   const [videoUrl, setVideoUrl] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const recordedChunks = useRef([]);
   const recordedBlob = useRef(null);
+  const recordingTimerRef = useRef(null);
+  
+  const MAX_RECORDING_TIME = 60; // 1 minute in seconds
 
   useEffect(() => {
     checkLinkStatus();
@@ -34,6 +40,16 @@ export default function RecordingPage() {
       return () => clearInterval(interval);
     }
   }, [shortCode, recordingComplete]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const checkLinkStatus = async () => {
     try {
@@ -91,7 +107,10 @@ export default function RecordingPage() {
         
         if (recordedChunks.current.length === 0) {
           console.error('No recorded data available');
-          alert('No recording data was captured. Please try again.');
+          toast.error('No Recording Data', {
+            description: 'No data was captured during recording. Please try again.',
+            duration: 5000,
+          });
           return;
         }
         
@@ -114,13 +133,50 @@ export default function RecordingPage() {
       
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event.error);
-        alert('Recording error: ' + event.error);
+        toast.error('Recording Error', {
+          description: `An error occurred during recording: ${event.error?.message || 'Unknown error'}`,
+          duration: 5000,
+        });
       };
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Capture data every second
       console.log('MediaRecorder started with 1s timeslice');
       setIsRecording(true);
+      setRecordingTime(0);
+      setShowTimeWarning(false);
+      
+      // Start the recording timer
+      recordingTimerRef.current = setInterval(() => {
+        // Double-check we're still recording
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+          return;
+        }
+        
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          
+          // Show warning at 50 seconds
+          if (newTime === 50) {
+            setShowTimeWarning(true);
+          }
+          
+          // Auto-stop at 60 seconds
+          if (newTime >= MAX_RECORDING_TIME) {
+            console.log('Max recording time reached, stopping...');
+            toast.info('Recording Time Limit Reached', {
+              description: 'Your recording has been automatically stopped at 1 minute.',
+              duration: 4000,
+            });
+            stopRecording();
+            return MAX_RECORDING_TIME;
+          }
+          
+          return newTime;
+        });
+      }, 1000);
 
       stream.getVideoTracks()[0].onended = () => {
         console.log('Video track ended by user');
@@ -128,7 +184,35 @@ export default function RecordingPage() {
       };
     } catch (error) {
       console.error('Error starting recording:', error);
-      alert('Failed to start recording: ' + error.message);
+      
+      // Handle specific error cases
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        toast.error('Permission Denied', {
+          description: 'Please allow screen recording permission to continue. Check your browser settings if the prompt did not appear.',
+          duration: 6000,
+          icon: <AlertCircle className="w-5 h-5" />,
+        });
+      } else if (error.name === 'NotFoundError') {
+        toast.error('No Screen Found', {
+          description: 'Could not find a screen to record. Please try again.',
+          duration: 5000,
+        });
+      } else if (error.name === 'NotReadableError') {
+        toast.error('Screen Not Readable', {
+          description: 'The screen source could not be read. Another application might be blocking access.',
+          duration: 5000,
+        });
+      } else if (error.name === 'OverconstrainedError') {
+        toast.error('Recording Failed', {
+          description: 'The requested recording settings are not supported by your device.',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Recording Error', {
+          description: error.message || 'An unexpected error occurred while starting the recording.',
+          duration: 5000,
+        });
+      }
     }
   };
 
@@ -137,6 +221,12 @@ export default function RecordingPage() {
     console.log('mediaRecorderRef.current:', mediaRecorderRef.current);
     console.log('isRecording:', isRecording);
     console.log('MediaRecorder state:', mediaRecorderRef.current?.state);
+    
+    // Clear the recording timer immediately
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     
     if (mediaRecorderRef.current && isRecording) {
       setIsRecording(false);
@@ -158,16 +248,40 @@ export default function RecordingPage() {
     setHasRecorded(false);
     recordedChunks.current = [];
     recordedBlob.current = null;
+    setRecordingTime(0);
+    setShowTimeWarning(false);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const uploadRecording = async () => {
     if (!recordedBlob.current) return;
 
+    // Check file size (50MB limit)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+    const fileSizeMB = (recordedBlob.current.size / (1024 * 1024)).toFixed(2);
+    
+    if (recordedBlob.current.size > MAX_FILE_SIZE) {
+      toast.error('Recording Too Large', {
+        description: `Your recording is ${fileSizeMB}MB. Please record a shorter video (max 50MB).`,
+        duration: 6000,
+        icon: <AlertCircle className="w-5 h-5" />,
+      });
+      return;
+    }
+
     setIsUploading(true);
+    
+    const uploadToast = toast.loading('Uploading your recording...');
+    
     try {
       const formData = new FormData();
       formData.append('video', recordedBlob.current, 'recording.webm');
@@ -180,11 +294,28 @@ export default function RecordingPage() {
       const data = await response.json();
       
       if (data.success) {
-        router.push(`/${shortCode}`);
+        toast.success('Recording Uploaded!', {
+          id: uploadToast,
+          description: 'Your recording has been sent successfully.',
+          duration: 3000,
+        });
+        setTimeout(() => {
+          router.push(`/${shortCode}`);
+        }, 500);
       } else {
+        toast.error('Upload Failed', {
+          id: uploadToast,
+          description: data.error || 'Failed to upload the recording. Please try again.',
+          duration: 5000,
+        });
         console.error('Upload failed:', data.error);
       }
     } catch (error) {
+      toast.error('Upload Error', {
+        id: uploadToast,
+        description: 'Network error occurred. Please check your connection and try again.',
+        duration: 5000,
+      });
       console.error('Error uploading:', error);
     } finally {
       setIsUploading(false);
@@ -228,11 +359,46 @@ export default function RecordingPage() {
              hasRecorded ? 'preview your recording' : 
              'click record to start'}
           </p>
+          {!hasRecorded && (
+            <div className="space-y-1">
+              <p className="text-gray-500 text-base">
+                maximum recording time: 1 minute
+              </p>
+              <p className="text-gray-500 text-base">
+                maximum file size: 10 MB
+              </p>
+            </div>
+          )}
         </div>
 
+        {isRecording && (
+          <div className="text-center space-y-4">
+            <div className={`text-6xl font-mono font-bold ${
+              showTimeWarning ? 'text-red-400 animate-pulse' : 'text-green-400'
+            }`}>
+              {formatTime(recordingTime)}
+            </div>
+            {showTimeWarning && (
+              <p className="text-red-400 text-lg animate-pulse">
+                recording will stop in {MAX_RECORDING_TIME - recordingTime} seconds!
+              </p>
+            )}
+          </div>
+        )}
+
         {hasRecorded && previewUrl && (
-          <div className="bg-black/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-green-950">
-            <SimpleMediaPlayer src={previewUrl} className="w-full" />
+          <div className="space-y-4">
+            <div className="bg-black/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-green-950">
+              <SimpleMediaPlayer src={previewUrl} className="w-full" />
+            </div>
+            <div className="text-center">
+              <p className="text-gray-400 text-sm">
+                File size: {recordedBlob.current ? (recordedBlob.current.size / (1024 * 1024)).toFixed(2) : '0'} MB
+                {recordedBlob.current && recordedBlob.current.size > 10 * 1024 * 1024 && (
+                  <span className="text-red-400 ml-2">(exceeds 10MB limit)</span>
+                )}
+              </p>
+            </div>
           </div>
         )}
         

@@ -32,6 +32,18 @@ export async function POST(request, { params }) {
     
     const videoBuffer = Buffer.from(await videoBlob.arrayBuffer());
     
+    // Check file size limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    if (videoBuffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `File size (${(videoBuffer.length / (1024 * 1024)).toFixed(2)}MB) exceeds the 10MB limit. Please record a shorter video.` 
+        },
+        { status: 413 } // Payload Too Large
+      );
+    }
+    
     await updateLinkWithVideo(shortCode, videoBuffer);
     
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,6 +20,17 @@ export default function RootLayout({ children }) {
         className={`${inter.variable} font-sans antialiased`}
       >
         {children}
+        <Toaster 
+          theme="dark"
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: '#0a0a0a',
+              border: '1px solid #052e16',
+              color: '#fff',
+            },
+          }}
+        />
       </body>
     </html>
   );
