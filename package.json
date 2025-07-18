@@ -10,7 +10,9 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "node scripts/setup-db.js",
+    "test:telegram": "node scripts/test-telegram.js",
+    "cleanup:telegram": "node scripts/cleanup-telegram.js"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
@@ -26,6 +28,8 @@
     "media-chrome": "^4.12.0",
     "nanoid": "^5.1.5",
     "next": "15.4.1",
+    "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.66.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "sonner": "^2.0.6",

@@ -4,7 +4,7 @@ a simple screen recording sharing web app
 
 ## preview
 
-![göster demo](https://github.com/byigitt/goster/blob/main/public/goster-demo.mp4)
+![göster demo](https://github.com/byigitt/goster/raw/refs/heads/main/images/goster-demo.mp4)
 
 ## features
 
@@ -56,7 +56,32 @@ create a `.env.local` file:
 ```
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 DATABASE_URL="postgresql://postgres:password@localhost:5432/goster?schema=public"
+
+# Telegram Bot Configuration (for video storage)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_CHANNEL_ID=@your_channel_or_id_here
 ```
+
+### setting up telegram storage
+
+1. create a telegram bot:
+   - message [@BotFather](https://t.me/botfather) on telegram
+   - send `/newbot` and follow the instructions
+   - copy the bot token
+
+2. create a telegram channel:
+   - create a new channel (can be private)
+   - add your bot as an admin with "post messages" permission
+   - get the channel id:
+     - for public channels: use `@channelname`
+     - for private channels: forward a message from the channel to [@userinfobot](https://t.me/userinfobot) to get the id
+
+3. update your `.env.local` with the bot token and channel id
+
+4. test the telegram connection:
+   ```bash
+   pnpm test:telegram
+   ```
 
 ## database setup
 
@@ -83,6 +108,17 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/goster?schema=public
 
 ## notes
 
-- recordings are stored in postgresql database
-- video files are stored as blobs in the database
+- recordings are stored in telegram channels (with database fallback)
+- videos up to 100mb are supported
+- maximum recording time is 10 minutes
+- telegram storage provides unlimited free video hosting
 - links expire after 24 hours
+- telegram messages are automatically deleted after 24 hours
+- if telegram is not configured, videos fall back to database storage
+
+## background jobs
+
+the app includes automatic cleanup of expired telegram messages:
+- runs every hour automatically
+- deletes telegram messages older than 24 hours
+- manual cleanup: `pnpm cleanup:telegram`
