@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2, Copy, Check, ExternalLink, Clock, CheckCircle, ArrowLeft, Trash2 } from 'lucide-react';
 import { getStoredLinks, deleteLink as deleteStoredLink } from '@/lib/localStorage';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 export default function LinksPage() {
   const router = useRouter();
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, linkId: null });
 
   useEffect(() => {
     loadLinks();
@@ -23,9 +25,14 @@ export default function LinksPage() {
   };
 
   const handleDelete = (id) => {
-    if (confirm('are you sure you want to delete this link?')) {
-      deleteStoredLink(id);
+    setDeleteModal({ isOpen: true, linkId: id });
+  };
+
+  const confirmDelete = () => {
+    if (deleteModal.linkId) {
+      deleteStoredLink(deleteModal.linkId);
       loadLinks();
+      setDeleteModal({ isOpen: false, linkId: null });
     }
   };
 
@@ -58,6 +65,17 @@ export default function LinksPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-black via-black to-green-950 p-4 sm:p-8">
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, linkId: null })}
+        onConfirm={confirmDelete}
+        title="Delete Link"
+        message="Are you sure you want to delete this link? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
+      
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
