@@ -4,9 +4,9 @@ a simple screen recording sharing web app
 
 ## preview
 
-<video src="https://github.com/byigitt/goster/raw/refs/heads/main/images/goster-demo.mp4" width="100%" controls>
-  <a href="https://github.com/byigitt/goster/raw/refs/heads/main/images/goster-demo.mp4">View Demo Video</a>
-</video>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/byigitt/goster/refs/heads/main/images/goster-demo.gif" />
+</p>
 
 ## features
 
