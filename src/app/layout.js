@@ -1,6 +1,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { InitJobs } from "@/components/init-jobs";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
       <body
         className={`${inter.variable} font-sans antialiased`}
       >
+        <InitJobs />
         {children}
         <Toaster 
           theme="dark"

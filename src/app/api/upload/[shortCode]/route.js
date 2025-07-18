@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getLink, updateLinkWithVideo } from '@/lib/db';
+import { getLink, updateLinkWithVideo, updateLinkWithTelegramData } from '@/lib/db';
+import { uploadVideoToTelegram } from '@/lib/telegram';
 
 export async function POST(request, { params }) {
   try {
@@ -32,24 +33,38 @@ export async function POST(request, { params }) {
     
     const videoBuffer = Buffer.from(await videoBlob.arrayBuffer());
     
-    // Check file size limit (10MB)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    // Check file size limit (100MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
     if (videoBuffer.length > MAX_FILE_SIZE) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `File size (${(videoBuffer.length / (1024 * 1024)).toFixed(2)}MB) exceeds the 10MB limit. Please record a shorter video.` 
+          error: `File size (${(videoBuffer.length / (1024 * 1024)).toFixed(2)}MB) exceeds the 100MB limit. Please record a shorter video.` 
         },
         { status: 413 } // Payload Too Large
       );
     }
     
-    await updateLinkWithVideo(shortCode, videoBuffer);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Video uploaded successfully'
-    });
+    // Try to upload to Telegram first
+    try {
+      const { messageId, fileId } = await uploadVideoToTelegram(videoBuffer, shortCode);
+      await updateLinkWithTelegramData(shortCode, fileId, messageId);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Video uploaded successfully to Telegram'
+      });
+    } catch (telegramError) {
+      console.error('Telegram upload failed, falling back to database storage:', telegramError);
+      
+      // Fallback to database storage if Telegram fails
+      await updateLinkWithVideo(shortCode, videoBuffer);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Video uploaded successfully'
+      });
+    }
   } catch (error) {
     console.error('Error uploading video:', error);
     return NextResponse.json(

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Copy, Check, Loader2, Share2 } from 'lucide-react';
+import { Copy, Check, Loader2, Share2, Clock } from 'lucide-react';
+import Link from 'next/link';
 import { updateLinkStatus } from '@/lib/localStorage';
 import { SimpleMediaPlayer } from '@/components/ui/simple-media-player';
 
@@ -13,6 +14,7 @@ export default function SenderViewPage() {
   const [recordingComplete, setRecordingComplete] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [videoDeleted, setVideoDeleted] = useState(false);
 
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${shortCode}`;
 
@@ -29,6 +31,13 @@ export default function SenderViewPage() {
       return () => clearInterval(interval);
     }
   }, [shortCode, recordingComplete]);
+
+  // Check video availability when recording is complete
+  useEffect(() => {
+    if (recordingComplete && videoUrl) {
+      checkVideoAvailability();
+    }
+  }, [recordingComplete, videoUrl]);
 
   const checkRecordingStatus = async () => {
     try {
@@ -47,6 +56,23 @@ export default function SenderViewPage() {
       console.error('Error checking status:', error);
     } finally {
       setChecking(false);
+    }
+  };
+  
+  const checkVideoAvailability = async () => {
+    try {
+      // Add timestamp to prevent caching
+      const response = await fetch(`/api/video/${shortCode}?t=${Date.now()}`, { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      });
+      if (!response.ok) {
+        setVideoDeleted(true);
+        console.log('Video not available, status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error checking video availability:', error);
+      setVideoDeleted(true);
     }
   };
 
@@ -137,15 +163,36 @@ export default function SenderViewPage() {
         ) : (
           <>
             <div className="text-center space-y-4">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight">recording received!</h1>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight">
+                {videoDeleted ? 'recording expired' : 'recording received!'}
+              </h1>
               <p className="text-gray-400 text-lg sm:text-xl">
-                your recording is ready to view
+                {videoDeleted 
+                  ? 'this recording has been automatically deleted after 24 hours' 
+                  : 'your recording is ready to view'}
               </p>
             </div>
 
-            <div className="bg-black/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-green-950">
-              <SimpleMediaPlayer src={videoUrl} className="w-full" />
-            </div>
+            {!videoDeleted && videoUrl ? (
+              <div className="bg-black/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-green-950">
+                <SimpleMediaPlayer src={videoUrl} className="w-full" />
+              </div>
+            ) : videoDeleted ? (
+              <div className="bg-black/50 backdrop-blur-sm rounded-2xl p-8 sm:p-12 text-center border border-green-950">
+                <div className="space-y-4">
+                  <Clock className="w-16 h-16 text-gray-500 mx-auto" />
+                  <p className="text-gray-400 text-lg">
+                    recordings are automatically deleted after 24 hours for privacy
+                  </p>
+                  <Link
+                    href="/"
+                    className="inline-block px-6 py-3 bg-green-950 text-white rounded-xl hover:bg-green-900 transition-colors border border-green-800 text-lg"
+                  >
+                    create a new link
+                  </Link>
+                </div>
+              </div>
+            ) : null}
 
           </>
         )}
