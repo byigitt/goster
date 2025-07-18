@@ -1,0 +1,16 @@
+# nixpacks.toml
+[phases.setup]
+nixPkgs = ["nodejs_18", "pnpm-9_x", "openssl"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm run build"]
+
+[start]
+cmd = "pnpm run start"
+
+[staticAssets]
+"public" = "/app/public"
+".next/static" = "/app/.next/static"
