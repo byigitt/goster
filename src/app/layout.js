@@ -1,12 +1,12 @@
-import { Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { InitJobs } from "@/components/init-jobs";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  display: 'swap',
+  display: "swap",
 });
 
 export const metadata = {
@@ -18,18 +18,18 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${geistMono.variable} font-mono antialiased`}
+        className={`${inter.variable} font-sans antialiased`}
       >
         <InitJobs />
         {children}
-        <Toaster 
+        <Toaster
           theme="dark"
           position="top-center"
           toastOptions={{
             style: {
-              background: '#0a0a0a',
-              border: '1px solid #052e16',
-              color: '#fff',
+              background: "#0a0a0a",
+              border: "1px solid #052e16",
+              color: "#fff",
             },
           }}
         />
