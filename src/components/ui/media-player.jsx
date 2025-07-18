@@ -700,6 +700,8 @@ function MediaPlayerVideo(props) {
   const mediaRefCallback = useMediaRef();
   const composedRef = useComposedRefs(ref, context.mediaRef, mediaRefCallback);
 
+
+
   const onPlayToggle = React.useCallback((event) => {
     props.onClick?.(event);
 
@@ -766,7 +768,8 @@ function MediaPlayerControls(props) {
       data-visible={controlsVisible ? "" : undefined}
       dir={context.dir}
       className={cn(
-        "dark pointer-events-none absolute right-0 bottom-0 left-0 z-50 flex items-center gap-2 px-4 py-3 opacity-0 transition-opacity duration-200 data-[visible]:pointer-events-auto data-[visible]:opacity-100 [:fullscreen_&]:px-6 [:fullscreen_&]:py-4",
+        "dark absolute right-0 bottom-0 left-0 z-50 flex items-center gap-2 px-4 py-3 opacity-0 transition-opacity duration-200 data-[visible]:opacity-100 [:fullscreen_&]:px-6 [:fullscreen_&]:py-4",
+        controlsVisible ? "pointer-events-auto" : "pointer-events-none",
         className
       )}
       {...controlsProps} />
@@ -1797,14 +1800,14 @@ function MediaPlayerSeek(props) {
         data-hovering={seekState.isHovering ? "" : undefined}
         data-slider=""
         data-slot="media-player-seek"
-        disabled={isDisabled}
+        disabled={isDisabled || seekableEnd === 0}
         {...seekProps}
         ref={seekRef}
         min={seekableStart}
-        max={seekableEnd}
+        max={seekableEnd || 1}
         step={0.01}
         className={cn(
-          "relative flex w-full touch-none select-none items-center data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "relative flex w-full touch-none select-none items-center data-[disabled]:opacity-50",
           className
         )}
         value={[displayValue]}
@@ -1834,7 +1837,7 @@ function MediaPlayerSeek(props) {
           {chapterSeparators}
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
-          className="relative z-10 block size-2.5 shrink-0 rounded-full bg-primary shadow-sm ring-ring/50 transition-[color,box-shadow] will-change-transform hover:ring-4 focus-visible:outline-hidden focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50" />
+          className="relative z-20 block size-2.5 shrink-0 rounded-full bg-primary shadow-sm ring-ring/50 transition-[color,box-shadow] will-change-transform hover:ring-4 focus-visible:outline-hidden focus-visible:ring-4" />
       </SliderPrimitive.Root>
       {!withoutTooltip &&
         !context.withoutTooltip &&

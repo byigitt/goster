@@ -53,16 +53,42 @@ export async function GET(request, { params }) {
       );
     }
     
+    // Get range header if present
+    const range = request.headers.get('range');
+    
     // Check if video is stored in Telegram
     if (link.telegramFileId) {
       try {
         const response = await streamVideoFromTelegram(link.telegramFileId);
         const videoBuffer = await response.arrayBuffer();
+        const videoData = new Uint8Array(videoBuffer);
+        
+        // Handle range requests
+        if (range) {
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : videoData.length - 1;
+          const chunksize = (end - start) + 1;
+          const chunk = videoData.slice(start, end + 1);
+          
+          return new NextResponse(chunk, {
+            status: 206,
+            headers: {
+              'Content-Range': `bytes ${start}-${end}/${videoData.length}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': chunksize.toString(),
+              'Content-Type': 'video/webm',
+              'Cache-Control': 'no-cache',
+            },
+          });
+        }
         
         return new NextResponse(videoBuffer, {
           headers: {
             'Content-Type': 'video/webm',
             'Content-Length': videoBuffer.byteLength.toString(),
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'no-cache',
           },
         });
       } catch (telegramError) {
@@ -78,10 +104,34 @@ export async function GET(request, { params }) {
     
     // Fallback to database storage
     if (link.videoData) {
+      const videoData = link.videoData;
+      
+      // Handle range requests
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : videoData.length - 1;
+        const chunksize = (end - start) + 1;
+        const chunk = videoData.slice(start, end + 1);
+        
+        return new NextResponse(chunk, {
+          status: 206,
+          headers: {
+            'Content-Range': `bytes ${start}-${end}/${videoData.length}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize.toString(),
+            'Content-Type': 'video/webm',
+            'Cache-Control': 'no-cache',
+          },
+        });
+      }
+      
       return new NextResponse(link.videoData, {
         headers: {
           'Content-Type': 'video/webm',
           'Content-Length': link.videoData.length.toString(),
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-cache',
         },
       });
     }

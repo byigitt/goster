@@ -15,11 +15,11 @@ import {
 
 export function SimpleMediaPlayer({ src, className, ...props }) {
   return (
-    <MediaPlayer className={className} {...props}>
+    <MediaPlayer className={className} autoHide={false} {...props}>
       <MediaPlayerVideo src={src} />
       <MediaPlayerLoading />
       <MediaPlayerError />
-      <MediaPlayerControls>
+      <MediaPlayerControls className="pointer-events-auto">
         <MediaPlayerPlay />
         <MediaPlayerSeek />
         <div className="flex items-center gap-2">
