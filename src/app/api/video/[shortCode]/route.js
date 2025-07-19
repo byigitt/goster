@@ -96,7 +96,7 @@ export async function GET(request, { params }) {
         // If video was in Telegram but is now deleted, return 404
         // Don't fall back to database storage
         return NextResponse.json(
-          { success: false, error: 'Video has been deleted' },
+          { success: false, error: 'Video not found' },
           { status: 404 }
         );
       }
@@ -143,7 +143,7 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error('Error retrieving video:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to retrieve video' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

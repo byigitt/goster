@@ -60,11 +60,11 @@ export async function uploadVideoToTelegram(videoBuffer, shortCode) {
 }
 
 /**
- * Get video file URL from Telegram
+ * Get video file info from Telegram (internal use only)
  * @param {string} fileId - Telegram file ID
- * @returns {Promise<string>} - Download URL for the video
+ * @returns {Promise<{file_path: string}>} - File info from Telegram
  */
-export async function getVideoFromTelegram(fileId) {
+async function getVideoFileInfo(fileId) {
   try {
     if (!process.env.TELEGRAM_BOT_TOKEN || !bot) {
       throw new Error('Telegram bot token not configured');
@@ -77,30 +77,26 @@ export async function getVideoFromTelegram(fileId) {
       throw new Error('File not found in Telegram');
     }
     
-    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-    
-    // Verify the file is accessible
-    const response = await fetch(fileUrl, { method: 'HEAD' });
-    if (!response.ok) {
-      throw new Error('File not accessible in Telegram');
-    }
-    
-    return fileUrl;
+    return file;
   } catch (error) {
-    console.error('Error getting video from Telegram:', error);
-    throw new Error(`Failed to get video from Telegram: ${error.message}`);
+    console.error('Error getting video info from Telegram:', error);
+    throw new Error(`Failed to get video info from Telegram: ${error.message}`);
   }
 }
 
 /**
- * Stream video from Telegram
+ * Stream video from Telegram (server-side only)
  * @param {string} fileId - Telegram file ID
  * @returns {Promise<Response>} - Fetch response with video stream
  */
 export async function streamVideoFromTelegram(fileId) {
   try {
-    // This will throw if file doesn't exist
-    const fileUrl = await getVideoFromTelegram(fileId);
+    // Get file info without exposing the URL
+    const fileInfo = await getVideoFileInfo(fileId);
+    
+    // Construct URL server-side only
+    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
+    
     const response = await fetch(fileUrl);
     
     if (!response.ok) {
