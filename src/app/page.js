@@ -180,6 +180,22 @@ export default function Home() {
       >
         <Github className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
       </a>
+
+      <div className="fixed bottom-6 left-6 flex gap-3 text-xs">
+        <Link
+          href="/terms"
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          Terms
+        </Link>
+        <span className="text-gray-600">•</span>
+        <Link
+          href="/privacy"
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          Privacy
+        </Link>
+      </div>
     </main>
   );
 }
