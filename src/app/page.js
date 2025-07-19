@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Copy, Check, Share2, List } from "lucide-react";
+import { Loader2, Copy, Check, Share2, List, Github } from "lucide-react";
 import { saveLink } from "@/lib/localStorage";
 
 export default function Home() {
@@ -170,6 +170,16 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <a
+        href="https://github.com/byigitt/goster"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 p-3 bg-gray-900/80 backdrop-blur-sm rounded-full hover:bg-gray-800 transition-all duration-200 border border-gray-700 hover:scale-110 group"
+        title="View on GitHub"
+      >
+        <Github className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+      </a>
     </main>
   );
 }
