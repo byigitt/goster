@@ -44,12 +44,43 @@ export async function POST(request, { params }) {
     }
     
     // Validate file type
-    const allowedMimeTypes = ['video/webm', 'video/mp4', 'video/ogg'];
-    if (!allowedMimeTypes.includes(videoBlob.type)) {
+    const allowedMimeTypes = [
+      'video/webm', 
+      'video/mp4', 
+      'video/ogg',
+      'video/quicktime', // MOV
+      'video/x-msvideo', // AVI
+      'video/x-ms-wmv', // WMV
+      'video/mpeg', // MPEG
+      'video/x-matroska' // MKV
+    ];
+    
+    // Some browsers may not set the correct MIME type for certain formats
+    const fileExtension = videoBlob.name?.toLowerCase().split('.').pop();
+    const extensionMimeMap = {
+      'mov': 'video/quicktime',
+      'avi': 'video/x-msvideo',
+      'wmv': 'video/x-ms-wmv',
+      'mpeg': 'video/mpeg',
+      'mpg': 'video/mpeg',
+      'mkv': 'video/x-matroska'
+    };
+    
+    let isValidType = allowedMimeTypes.includes(videoBlob.type);
+    
+    // Fallback to extension check if MIME type is generic
+    if (!isValidType && videoBlob.type === 'application/octet-stream' && fileExtension) {
+      const mappedMime = extensionMimeMap[fileExtension];
+      if (mappedMime && allowedMimeTypes.includes(mappedMime)) {
+        isValidType = true;
+      }
+    }
+    
+    if (!isValidType) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`
+          error: `Invalid file type. Supported formats: WebM, MP4, OGG, MOV, AVI, WMV, MPEG, MKV`
         },
         { status: 400 }
       );
@@ -57,22 +88,24 @@ export async function POST(request, { params }) {
     
     const videoBuffer = Buffer.from(await videoBlob.arrayBuffer());
     
-    // Additional validation: Check file signature (magic bytes)
-    const signatures = {
-      'video/webm': [0x1A, 0x45, 0xDF, 0xA3], // WebM
-      'video/mp4': [0x00, 0x00, 0x00, [0x18, 0x20], 0x66, 0x74, 0x79, 0x70], // MP4
-      'video/ogg': [0x4F, 0x67, 0x67, 0x53] // OGG
-    };
+    // Additional validation: Check file signature (magic bytes) for common formats
+    let isValidSignature = true; // Default to true for formats we don't check
     
-    // Simple magic byte validation
-    let isValidSignature = false;
+    // Only validate signatures for the most common formats
     if (videoBlob.type === 'video/webm' && videoBuffer.length >= 4) {
-      isValidSignature = signatures['video/webm'].every((byte, i) => videoBuffer[i] === byte);
-    } else if (videoBlob.type === 'video/mp4' && videoBuffer.length >= 8) {
+      isValidSignature = videoBuffer[0] === 0x1A && videoBuffer[1] === 0x45 && 
+                        videoBuffer[2] === 0xDF && videoBuffer[3] === 0xA3;
+    } else if ((videoBlob.type === 'video/mp4' || videoBlob.type === 'video/quicktime') && videoBuffer.length >= 8) {
+      // MP4 and MOV share similar structure (both based on QuickTime format)
       isValidSignature = videoBuffer[4] === 0x66 && videoBuffer[5] === 0x74 && 
                         videoBuffer[6] === 0x79 && videoBuffer[7] === 0x70;
     } else if (videoBlob.type === 'video/ogg' && videoBuffer.length >= 4) {
-      isValidSignature = signatures['video/ogg'].every((byte, i) => videoBuffer[i] === byte);
+      isValidSignature = videoBuffer[0] === 0x4F && videoBuffer[1] === 0x67 && 
+                        videoBuffer[2] === 0x67 && videoBuffer[3] === 0x53;
+    } else if (videoBlob.type === 'video/x-msvideo' && videoBuffer.length >= 4) {
+      // AVI files start with RIFF
+      isValidSignature = videoBuffer[0] === 0x52 && videoBuffer[1] === 0x49 && 
+                        videoBuffer[2] === 0x46 && videoBuffer[3] === 0x46;
     }
     
     if (!isValidSignature) {

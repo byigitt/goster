@@ -9,8 +9,11 @@ import {
   RotateCcw,
   Loader2,
   AlertCircle,
+  Monitor,
+  Upload,
 } from "lucide-react";
 import { SimpleMediaPlayer } from "@/components/ui/simple-media-player";
+import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 
 export default function RecordingPage() {
@@ -25,6 +28,8 @@ export default function RecordingPage() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const [uploadMode, setUploadMode] = useState("record"); // "record" or "upload"
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -275,9 +280,22 @@ export default function RecordingPage() {
     recordedBlob.current = null;
     setRecordingTime(0);
     setShowTimeWarning(false);
+    setSelectedFile(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
+    }
+  };
+
+  const handleFileSelect = (file) => {
+    setSelectedFile(file);
+    if (file) {
+      setHasRecorded(true);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      recordedBlob.current = file;
+    } else {
+      reRecord();
     }
   };
 
@@ -295,8 +313,8 @@ export default function RecordingPage() {
     const fileSizeMB = (recordedBlob.current.size / (1024 * 1024)).toFixed(2);
 
     if (recordedBlob.current.size > MAX_FILE_SIZE) {
-      toast.error("Recording Too Large", {
-        description: `Your recording is ${fileSizeMB}MB. Please record a shorter video (max 100MB).`,
+      toast.error("File Too Large", {
+        description: `Your ${uploadMode === "record" ? "recording" : "video"} is ${fileSizeMB}MB. Please ${uploadMode === "record" ? "record a shorter video" : "select a smaller file"} (max 100MB).`,
         duration: 6000,
         icon: <AlertCircle className="w-5 h-5" />,
       });
@@ -305,11 +323,12 @@ export default function RecordingPage() {
 
     setIsUploading(true);
 
-    const uploadToast = toast.loading("Uploading your recording...");
+    const uploadToast = toast.loading(`Uploading your ${uploadMode === "record" ? "recording" : "video"}...`);
 
     try {
       const formData = new FormData();
-      formData.append("video", recordedBlob.current, "recording.webm");
+      const filename = uploadMode === "record" ? "recording.webm" : selectedFile?.name || "upload.mp4";
+      formData.append("video", recordedBlob.current, filename);
 
       const response = await fetch(`/api/upload/${shortCode}`, {
         method: "POST",
@@ -319,9 +338,9 @@ export default function RecordingPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success("Recording Uploaded!", {
+        toast.success("Upload Successful!", {
           id: uploadToast,
-          description: "Your recording has been sent successfully.",
+          description: `Your ${uploadMode === "record" ? "recording" : "video"} has been sent successfully.`,
           duration: 3000,
         });
         setTimeout(() => {
@@ -331,7 +350,7 @@ export default function RecordingPage() {
         toast.error("Upload Failed", {
           id: uploadToast,
           description:
-            data.error || "Failed to upload the recording. Please try again.",
+            data.error || `Failed to upload the ${uploadMode === "record" ? "recording" : "video"}. Please try again.`,
           duration: 5000,
         });
         console.error("Upload failed:", data.error);
@@ -382,19 +401,25 @@ export default function RecordingPage() {
       <div className="max-w-4xl w-full space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight">
-            share your screen
+            {uploadMode === "record" ? "share your screen" : "upload video"}
           </h1>
           <p className="text-gray-400 text-lg sm:text-xl">
-            {isRecording
-              ? "recording in progress..."
-              : hasRecorded
-              ? "preview your recording"
-              : "click record to start"}
+            {uploadMode === "record" ? (
+              isRecording
+                ? "recording in progress..."
+                : hasRecorded
+                ? "preview your recording"
+                : "click record to start"
+            ) : (
+              hasRecorded
+                ? "preview your video"
+                : "select or drop a video file"
+            )}
           </p>
           {!hasRecorded && (
             <div className="space-y-1">
               <p className="text-gray-500 text-base">
-                maximum recording time: 10 minutes
+                {uploadMode === "record" ? "maximum recording time: 10 minutes" : "supported formats: MP4, WebM, MOV, AVI"}
               </p>
               <p className="text-gray-500 text-base">
                 maximum file size: 100 MB
@@ -402,6 +427,39 @@ export default function RecordingPage() {
             </div>
           )}
         </div>
+
+        {!hasRecorded && !isRecording && (
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => {
+                setUploadMode("record");
+                reRecord();
+              }}
+              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
+                uploadMode === "record"
+                  ? "bg-green-950 text-white border border-green-800"
+                  : "bg-gray-900 text-gray-400 border border-gray-700 hover:text-white"
+              }`}
+            >
+              <Monitor className="w-5 h-5" />
+              Screen Record
+            </button>
+            <button
+              onClick={() => {
+                setUploadMode("upload");
+                reRecord();
+              }}
+              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
+                uploadMode === "upload"
+                  ? "bg-green-950 text-white border border-green-800"
+                  : "bg-gray-900 text-gray-400 border border-gray-700 hover:text-white"
+              }`}
+            >
+              <Upload className="w-5 h-5" />
+              Upload File
+            </button>
+          </div>
+        )}
 
         {isRecording && (
           <div className="text-center space-y-4">
@@ -455,8 +513,16 @@ export default function RecordingPage() {
           </div>
         )}
 
+        {uploadMode === "upload" && !hasRecorded && (
+          <FileUpload
+            onFileSelect={handleFileSelect}
+            maxSize={100 * 1024 * 1024}
+            accept="video/*"
+          />
+        )}
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {!hasRecorded ? (
+          {!hasRecorded && uploadMode === "record" ? (
             <button
               onClick={isRecording ? stopRecording : startRecording}
               className={`px-6 py-4 sm:px-8 sm:py-5 rounded-2xl text-xl sm:text-2xl font-bold tracking-tight transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-3 ${
@@ -477,7 +543,7 @@ export default function RecordingPage() {
                 </>
               )}
             </button>
-          ) : (
+          ) : !hasRecorded && uploadMode === "upload" ? null : (
             <>
               <button
                 onClick={reRecord}
